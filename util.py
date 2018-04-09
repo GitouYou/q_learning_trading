@@ -145,3 +145,19 @@ def get_data_as_dict(dates, symbols, keys):
         data_dict[key] = df
     return data_dict
 
+def create_benchmark_df(symbol, start_date, end_date, num_shares):
+    """Create a dataframe of benchmark data. Benchmark is a portfolio consisting of
+    num_shares of the symbol in use and holding them until end_date.
+    """
+    # Get adjusted close price data
+    benchmark_prices = get_data([symbol], pd.date_range(start_date, end_date), 
+        addSPY=False).dropna()
+
+    # Create df_benchmark_trades: buy num_shares of symbol, hold them till the last date
+    df_benchmark_trades = pd.DataFrame(
+        data=[(benchmark_prices.index.min(), symbol, "BUY", num_shares), 
+        (benchmark_prices.index.max(), symbol, "SELL", num_shares)], 
+        columns=["Date", "Symbol", "Order", "Shares"])
+    df_benchmark_trades.set_index("Date", inplace=True)
+    return df_benchmark_trades
+
