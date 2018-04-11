@@ -95,3 +95,64 @@ def compute_portvals_single_symbol(df_orders, symbol, start_val=1000000,
     portvals = pd.DataFrame(df_value.sum(axis=1), df_value.index, ["port_val"])
     return portvals
 
+def market_simulator(df_orders, df_orders_benchmark, symbol, start_val=1000000,
+    commission=9.95, impact=0.005, daily_rf=0.0, samples_per_year=252.0, 
+    save_fig=False, fig_name="plot.png"):
+    """
+    This function takes in and executes trades from orders dataframes
+
+    Parameters:
+    df_orders: A dataframe that contains portfolio orders
+    df_orders_benchmark: A dataframe that contains benchmark orders
+    start_val: The starting cash in dollars
+    commission: The fixed amount in dollars charged for each transaction
+    impact: The amount the price moves against the trader compared to the 
+    historical data at each transaction
+    daily_rf: Daily risk-free rate, assuming it does not change
+    samples_per_year: Sampling frequency per year
+    save_fig: Whether to save the plot or not
+    fig_name: The name of the saved figure
+
+    Returns:
+    Print out final portfolio value of the portfolio, Sharpe ratio, cumulative
+    return, average daily return and standard deviation of the portfolio and 
+    Benchmark. Plot a chart of the portfolio and benchmark performances.
+    """    
+    # Process portfolio orders
+    portvals = compute_portvals_single_symbol(df_orders=df_orders, symbol=symbol,
+        start_val=start_val, commission=commission, impact=impact)
+
+    # Get portfolio stats
+    cum_ret, avg_daily_ret, std_daily_ret, sharpe_ratio = get_portfolio_stats(
+        portvals, daily_rf=daily_rf, samples_per_year=samples_per_year)
+    
+    # Process benchmark orders
+    portvals_bm = compute_portvals_single_symbol(df_orders=df_orders_benchmark, 
+        symbol=symbol, start_val=start_val, commission=commission, impact=impact)
+    
+    # Get benchmark stats
+    cum_ret_bm, avg_daily_ret_bm, std_daily_ret_bm, sharpe_ratio_bm = \
+    get_portfolio_stats(portvals_bm, daily_rf=daily_rf, 
+        samples_per_year=samples_per_year)
+
+    # Compare portfolio against Benchmark
+    print ("Sharpe Ratio of Portfolio: {}".format(sharpe_ratio))
+    print ("Sharpe Ratio of Benchmark : {}".format(sharpe_ratio_bm))
+    print ()
+    print ("Cumulative Return of Portfolio: {}".format(cum_ret))
+    print ("Cumulative Return of Benchmark : {}".format(cum_ret_bm))
+    print ()
+    print ("Standard Deviation of Portfolio: {}".format(std_daily_ret))
+    print ("Standard Deviation of Benchmark : {}".format(std_daily_ret_bm))
+    print ()
+    print ("Average Daily Return of Portfolio: {}".format(avg_daily_ret))
+    print ("Average Daily Return of Benchmark : {}".format(avg_daily_ret_bm))
+    print ()
+    print ("Final Portfolio Value: {}".format(portvals.iloc[-1, -1]))
+    print ("Final Benchmark Value: {}".format(portvals_bm.iloc[-1, -1]))
+
+    # Rename columns and normalize data to the first date of the date range
+    portvals.rename(columns={"port_val": "Portfolio"}, inplace=True)
+    portvals_bm.rename(columns={"port_val": "Benchmark"}, inplace=True)
+    plot_norm_data_vertical_lines(df_orders, portvals, portvals_bm,
+        save_fig=False, fig_name="plot.png")
