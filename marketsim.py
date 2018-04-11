@@ -156,3 +156,47 @@ def market_simulator(df_orders, df_orders_benchmark, symbol, start_val=1000000,
     portvals_bm.rename(columns={"port_val": "Benchmark"}, inplace=True)
     plot_norm_data_vertical_lines(df_orders, portvals, portvals_bm,
         save_fig=False, fig_name="plot.png")
+
+def plot_norm_data_vertical_lines(df_orders, portvals, portvals_bm, 
+    plot_vertical_lines=False, save_fig=False, fig_name="plot.png"):
+    """Plots portvals and portvals_bm, showing vertical lines for orderss
+    
+    Parameters:
+    df_orders: A dataframe that contains portfolio orders
+    portvals: A dataframe with one column containing daily portfolio value
+    portvals_bm: A dataframe with one column containing daily benchmark value
+    save_fig: Whether to save the plot or not
+    fig_name: The name of the saved figure
+
+    Returns: Plot a chart of the portfolio and benchmark performances
+    """
+    # Normalize data
+    portvals = normalize_data(portvals)
+    portvals_bm = normalize_data(portvals_bm)
+    df = portvals_bm.join(portvals)
+
+    # Plot the normalized benchmark and portfolio
+    plt.plot(df.loc[:, "Benchmark"], label="Benchmark")
+    plt.plot(df.loc[:, "Portfolio"], label="Portfolio")
+
+    # Plot the vertical lines for buy and sell signals
+    if plot_vertical_lines == True:
+        for date in df_orders.index:
+            if df_orders.loc[date, "Shares"] > 0:
+                plt.axvline(date, color = 'g', linestyle = '--')
+            elif df_orders.loc[date, "Shares"] < 0:
+                plt.axvline(date, color = 'r', linestyle = '--')
+
+    plt.title("Portfolio vs. Benchmark")
+    plt.xlabel("Date")
+    plt.ylabel("Normalized prices")
+    plt.legend()
+
+    # Set figure size
+    fig = plt.gcf()
+    fig.set_size_inches(12, 6)
+
+    if save_fig == True:
+        plt.savefig(fig_name)
+    else:
+        plt.show()
