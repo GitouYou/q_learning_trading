@@ -170,7 +170,7 @@ def create_df_trades(orders, symbol, num_shares, cash_pos=0, long_pos=1, short_p
     for date in non_cash_orders.index:
         if non_cash_orders.loc[date] == long_pos:
             trades.append((date, num_shares))
-        elif non_cash_orders.loc[num_shares] == short_pos:
+        elif non_cash_orders.loc[date] == short_pos:
             trades.append((date, -num_shares))
     df_trades = pd.DataFrame(trades, columns=["Date", "Shares"])
     df_trades.set_index("Date", inplace=True)
