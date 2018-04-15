@@ -151,8 +151,7 @@ def create_df_benchmark(symbol, start_date, end_date, num_shares):
     """
     # Get adjusted close price data
     benchmark_prices = get_data([symbol], pd.date_range(start_date, end_date), 
-        addSPY=False).dropna()
-
+                                addSPY=False).dropna()
     # Create benchmark df: buy num_shares and hold them till the last date
     df_benchmark_trades = pd.DataFrame(
         data=[(benchmark_prices.index.min(), num_shares), 
@@ -160,3 +159,19 @@ def create_df_benchmark(symbol, start_date, end_date, num_shares):
         columns=["Date", "Shares"])
     df_benchmark_trades.set_index("Date", inplace=True)
     return df_benchmark_trades
+
+def create_df_trades(orders, symbol, num_shares, cash_pos=0, long_pos=1, short_pos=-1):
+    """Create a dataframe of trades based on the orders executed. +1000 
+    indicates a BUY of 1000 shares, and -1000 indicates a SELL of 1000 shares.
+    """
+    # Remove cash positions to make the "for" loop below run faster
+    non_cash_orders = orders[orders != cash_pos]
+    trades = []
+    for date in non_cash_orders.index:
+        if non_cash_orders.loc[date] == long_pos:
+            trades.append((date, num_shares))
+        elif non_cash_orders.loc[num_shares] == short_pos:
+            trades.append((date, -num_shares))
+    df_trades = pd.DataFrame(trades, columns=["Date", "Shares"])
+    df_trades.set_index("Date", inplace=True)
+    return df_trades
