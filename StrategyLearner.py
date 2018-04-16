@@ -42,3 +42,31 @@ class StrategyLearner(object):
         # Initialize a QLearner
         self.q_learner = ql.QLearner(**kwargs)
 
+    def get_features(self, prices):
+        """Compute technical indicators and use them as features to be fed
+        into a Q-learner.
+        
+        Parameters:
+        prices: Adjusted close prices of the given symbol
+        
+        Returns:
+        df_features: A pandas dataframe of the technical indicators
+        """
+        window = 10
+        # Compute rolling mean
+        rolling_mean = prices.rolling(window=window).mean()
+        # Compute_rolling_std
+        rolling_std = prices.rolling(window=window).std()
+        # Compute momentum
+        momentum = get_momentum(prices, window)
+        # Compute SMA indicator
+        sma_indicator = get_sma_indicator(prices, rolling_mean)
+        # Compute Bollinger value
+        bollinger_val = compute_bollinger_value(prices, rolling_mean, rolling_std)
+        # Create a dataframe with three features
+        df_features = pd.concat([momentum, sma_indicator], axis=1)
+        df_features = pd.concat([df_features, bollinger_val], axis=1)
+        df_features.columns = ["ind{}".format(i) 
+                                for i in range(len(df_features.columns))]
+        df_features.dropna(inplace=True)
+        return df_features
