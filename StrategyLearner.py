@@ -89,3 +89,23 @@ class StrategyLearner(object):
                 else:
                     thres[i, step] = df_copy[feat].iloc[-1]
         return thres
+
+    def discretize(self, df_features, non_neg_position, thresholds):
+        """Discretize features and return a state.
+
+        Parameters:
+        df_features: The technical indicators to be discretized. They were  
+        computed in get_features()
+        non_neg_position: The position at the beginning of a particular day,
+        before taking any action on that day. It is >= 0 so that state >= 0
+
+        Returns:
+        state: A state in the Q-table from which we will query for an action.
+        It indicates an index of the first dimension in the Q-table
+        """
+        state = non_neg_position * pow(self.num_steps, len(df_features))
+        for i in range(len(df_features)):
+            thres = thresholds[i][thresholds[i] >= df_features[i]][0]
+            thres_i = np.where(thresholds == thres)[1][0]
+            state += thres_i * pow(self.num_steps, i)
+        return state
