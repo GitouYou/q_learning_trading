@@ -70,3 +70,22 @@ class StrategyLearner(object):
                                 for i in range(len(df_features.columns))]
         df_features.dropna(inplace=True)
         return df_features
+
+    def get_thresholds(self, df_features, num_steps):
+        """Compute the thresholds to be used in the discretization of features.
+        thresholds is a 2-d numpy array where the first dimesion indicates the 
+        indices of features in df_features and the second dimension refers to 
+        the value of a feature at a particular threshold.
+        """
+        step_size = round(df_features.shape[0] / num_steps)
+        df_copy = df_features.copy()
+        thres = np.zeros(shape=(df_features.shape[1], num_steps))
+        for i, feat in enumerate(df_features.columns):
+            df_copy.sort_values(by=[feat], inplace=True)
+            for step in range(num_steps):
+                if step < num_steps - 1:
+                    thres[i, step] = df_copy[feat].iloc[(step + 1) * step_size]
+                # The last threshold must be = the largest value in df_copy
+                else:
+                    thres[i, step] = df_copy[feat].iloc[-1]
+        return thres
