@@ -109,3 +109,54 @@ class StrategyLearner(object):
             thres_i = np.where(thresholds == thres)[1][0]
             state += thres_i * pow(self.num_steps, i)
         return state
+
+    def get_position(self, old_pos, signal):
+        """Find a new position based on the old position and the given signal.
+        signal = action - 1; action is a result of querying a state, which was
+        computed in discretize(), in the Q-table. An action is 0, 1 or 2. It is
+        an index of the second dimension in the Q-table. We have to subtract 1
+        from action to get a signal of -1, 0 or 1 (short, cash or long).
+        """
+        new_pos = self.CASH
+        # If old_pos is not long and signal is to buy, new_pos will be long
+        if old_pos < self.LONG and signal == self.LONG:
+            new_pos = self.LONG
+        # If old_pos is not short and signal is to sell, new_pos will be short
+        elif old_pos > self.SHORT and signal == self.SHORT:
+            new_pos = self.SHORT
+        return new_pos
+
+    def get_daily_reward(self, prev_price, curr_price, position):
+        """Calculate the daily reward as a percentage change in prices: 
+        - Position is long: if the price goes up (curr_price > prev_price),
+          we get a positive reward; otherwise, we get a negative reward
+        - Position is short: if the price goes down, we get a positive reward;
+        otherwise, we a negative reward
+        - Position is cash: we get no reward
+        """
+        return position * ((curr_price / prev_price) - 1)
+
+    def has_converged(self, cum_returns, patience=10):
+        """Check if the cumulative returns have converged.
+
+        Paramters:
+        cum_returns: A list of cumulative returns for respective epochs
+        patience: The number of epochs with no improvement in cum_returns
+
+        Returns: True if converged, False otherwise
+        """
+        # The number of epochs should be at least patience before checking
+        # for convergence
+        if patience > len(cum_returns):
+            return False
+        latest_returns = cum_returns[-patience:]
+        # If all the latest returns are the same, return True
+        if len(set(latest_returns)) == 1:
+            return True
+        max_return = max(cum_returns)
+        # If one of recent returns improves, not yet converged
+        if max_return in latest_returns:
+            return False
+        # If none of recent returns is greater than max_return, it has converged
+        return (all(ret <= max_return for ret in latest_returns))
+
