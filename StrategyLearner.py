@@ -160,3 +160,71 @@ class StrategyLearner(object):
         # If none of recent returns is greater than max_return, it has converged
         return (all(ret <= max_return for ret in latest_returns))
 
+    def add_evidence(self, symbol="IBM", start_date=dt.datetime(2008,1,1),
+        end_date=dt.datetime(2009,12,31), start_val = 10000):
+        """Create a QLearner, and train it for trading.
+
+        Parameters:
+        symbol: The stock symbol to act on
+        start_date: A datetime object that represents the start date
+        end_date: A datetime object that represents the end date
+        start_val: Start value of the portfolio which contains only the symbol
+        """
+        dates = pd.date_range(start_date, end_date)
+        # Get adjusted close prices for symbol
+        df_prices = get_data([symbol], dates)
+        # Get features and thresholds
+        df_features = self.get_features(df_prices[symbol])
+        thresholds = self.get_thresholds(df_features, self.num_steps)
+        cum_returns = []
+        for epoch in range(1, self.epochs + 1):
+            # Initial position is holding nothing
+            position = self.CASH
+            # Create a series that captures order signals based on actions taken
+            orders = pd.Series(index=df_features.index)
+            # Iterate over the data by date
+            for day, date in enumerate(df_features.index):
+                # Get a state; add 1 to position so that states >= 0
+                state = self.discretize(df_features.loc[date], 
+                                        position + 1, thresholds)
+                # On the first day, get an action without updating the Q-table
+                if date == df_features.index[0]:
+                    action = self.q_learner.query_set_state(state)
+                # On other days, calculate the reward and update the Q-table
+                else:
+                    prev_price = df_prices[symbol].iloc[day-1]
+                    curr_price = df_prices[symbol].loc[date]
+                    reward = self.get_daily_reward(prev_price, 
+                                                   curr_price, position)
+                    action = self.q_learner.query(state, reward)
+                # On the last day, close any open positions
+                if date == df_features.index[-1]:
+                    new_pos = -position
+                else:
+                    new_pos = self.get_position(position, action - 1)
+                # Add new_pos to orders
+                orders.loc[date] = new_pos
+                # Update current position
+                position += new_pos
+            
+            df_trades = create_df_trades(orders, symbol, self.num_shares)
+            portvals = compute_portvals_single_symbol(df_orders=df_trades, 
+                                                      symbol=symbol, 
+                                                      start_val=start_val, 
+                                                      commission=self.commission,
+                                                      impact=self.impact)
+            cum_return = get_portfolio_stats(portvals)[0]
+            cum_returns.append(cum_return)
+            if self.verbose: 
+                print (epoch, cum_return)
+            # Check for convergence after running for at least 20 epochs
+            if epoch > 20:
+                # Stop if the cum_return doesn't improve for 10 epochs
+                if self.has_converged(cum_returns):
+                    break
+        if self.verbose:
+            plt.plot(cum_returns)
+            plt.xlabel("Epoch")
+            plt.ylabel("Cumulative return (%)")
+            plt.show()
+
