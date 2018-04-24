@@ -228,3 +228,48 @@ class StrategyLearner(object):
             plt.ylabel("Cumulative return (%)")
             plt.show()
 
+    def test_policy(self, symbol="IBM", start_date=dt.datetime(2010,1,1),
+        end_date=dt.datetime(2011,12,31), start_val=10000):
+        """Use the existing policy and test it against new data.
+
+        Parameters:
+        symbol: The stock symbol to act on
+        start_date: A datetime object that represents the start date
+        end_date: A datetime object that represents the end date
+        start_val: Start value of the portfolio which contains only the symbol
+        
+        Returns:
+        df_trades: A dataframe whose values represent trades for each day: 
+        +1000 indicating a BUY of 1000 shares, and -1000 indicating a SELL of 
+        1000 shares
+        """
+
+        dates = pd.date_range(start_date, end_date)
+        # Get adjusted close pricess for symbol
+        df_prices = get_data([symbol], dates)
+        # Get features and thresholds
+        df_features = self.get_features(df_prices[symbol])
+        thresholds = self.get_thresholds(df_features, self.num_steps)
+        # Initial position is holding nothing
+        position = self.CASH
+        # Create a series that captures order signals based on actions taken
+        orders = pd.Series(index=df_features.index)
+        # Iterate over the data by date
+        for date in df_features.index:
+            # Get a state; add 1 to position so that states >= 0
+            state = self.discretize(df_features.loc[date], 
+                                    position + 1, thresholds)
+            action = self.q_learner.query_set_state(state)
+            # On the last day, close any open positions
+            if date == df_features.index[-1]:
+                new_pos = -position
+            else:
+                new_pos = self.get_position(position, action - 1)
+            # Add new_pos to orders
+            orders.loc[date] = new_pos
+            # Update current position
+            position += new_pos
+        # Create a trade dataframe
+        df_trades = create_df_trades(orders, symbol, self.num_shares)
+        return df_trades
+        
