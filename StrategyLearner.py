@@ -273,3 +273,47 @@ class StrategyLearner(object):
         df_trades = create_df_trades(orders, symbol, self.num_shares)
         return df_trades
         
+
+if __name__=="__main__":
+    start_val = 100000
+    symbol = "JPM"
+    commission = 0.00
+    impact = 0.0
+    num_shares = 1000
+
+    # In-sample or training period
+    start_date = dt.datetime(2008, 1, 1)
+    end_date = dt.datetime(2009, 12, 31)
+    
+    # Get a dataframe of benchmark data. Benchmark is a portfolio starting with
+    # $100,000, investing in 1000 shares of symbol and holding that position
+    df_benchmark_trades = create_df_benchmark(symbol, start_date, end_date, 
+                                              num_shares)
+
+    # Train and test a StrategyLearner
+    stl = StrategyLearner(num_shares=num_shares, impact=impact, 
+                          commission=commission, verbose=True,
+                          num_states=3000, num_actions=3)
+    stl.add_evidence(symbol=symbol, start_val=start_val, 
+                     start_date=start_date, end_date=end_date)
+    df_trades = stl.test_policy(symbol=symbol, start_date=start_date,
+                                end_date=end_date)
+
+    # Retrieve performance stats via a market simulator
+    print ("Performances during training period for {}".format(symbol))
+    print ("Date Range: {} to {}".format(start_date, end_date))
+    market_simulator(df_trades, df_benchmark_trades, symbol=symbol, 
+                     start_val=start_val, commission=commission, impact=impact)
+
+    # Out-of-sample or testing period: Perform similiar steps as above,
+    # except that we don't train the data (i.e. run add_evidence again)
+    start_date = dt.datetime(2010, 1, 1)
+    end_date = dt.datetime(2011, 12, 31)
+    df_benchmark_trades = create_df_benchmark(symbol, start_date, end_date, 
+                                              num_shares)
+    df_trades = stl.test_policy(symbol=symbol, start_date=start_date, 
+                                end_date=end_date)
+    print ("\nPerformances during testing period for {}".format(symbol))
+    print ("Date Range: {} to {}".format(start_date, end_date))
+    market_simulator(df_trades, df_benchmark_trades, symbol=symbol, 
+                     start_val=start_val, commission=commission, impact=impact)
