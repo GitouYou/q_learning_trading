@@ -154,11 +154,14 @@ class StrategyLearner(object):
         if len(set(latest_returns)) == 1:
             return True
         max_return = max(cum_returns)
-        # If one of recent returns improves, not yet converged
         if max_return in latest_returns:
-            return False
+            # If one of recent returns improves, not yet converged
+            if max_return not in cum_returns[:len(cum_returns) - patience]:
+                return False
+            else:
+                return True
         # If none of recent returns is greater than max_return, it has converged
-        return (all(ret <= max_return for ret in latest_returns))
+        return True
 
     def add_evidence(self, symbol="IBM", start_date=dt.datetime(2008,1,1),
         end_date=dt.datetime(2009,12,31), start_val = 10000):
